@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>คำนวณการผ่อนชำระเงินกู้สหกรณ์</title>
+    <style>
+        body {
+            font-family: 'Kanit', sans-serif;
+            background-color: #f0f8ff;
+            margin: 20px;
+            color: #1a237e;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #1a237e;
+            text-align: center;
+        }
+
+        .input-group label {
+            font-size: 18px;
+        }
+
+        .input-group {
+            margin: 20px 0;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        input {
+            padding: 8px;
+            border: 1px solid #1a237e;
+            border-radius: 5px;
+            width: 200px;
+            font-size: 16px;
+        }
+
+        button {
+            background-color: #1a237e;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background-color: #0d47a1;
+        }
+
+        /* ---- ส่วนตาราง ---- */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            border: 1px solid #ddd;   /* เส้นขอบนอกตาราง */
+        }
+
+        th {
+            background-color: #1a237e;
+            color: white;
+            padding: 12px;
+            font-size: 18px;
+        }
+
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd;   /* เส้นขอบในแต่ละเซลล์ */
+        }
+
+        /* จัดตัวอักษรทุกคอลัมน์กึ่งกลาง */
+        thead th:nth-child(n+1),
+        tbody td:nth-child(n+1) {
+            text-align: center;
+        }
+
+        /* สลับสีแถว */
+        tr:nth-child(even) {
+            background-color: #e3f2fd;
+        }
+
+        .note {
+            color: #1a237e;
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #e3f2fd;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>คำนวณการผ่อนชำระเงินกู้สหกรณ์</h1>
+        
+        <div class="input-group">
+            <div>
+                <label>วงเงินกู้ (บาท): </label><br>
+                <input type="number" id="loanAmount" step="1000" placeholder=" เช่น 100000">
+            </div>
+            <div>
+                <label>อัตราดอกเบี้ย (% ต่อปี): </label><br>
+                <input type="number" id="interestRate" step="0.01" placeholder="เช่น 8">
+            </div>
+            <div>
+                <label>จำนวนงวดผ่อน: </label><br>
+                <input type="number" id="installments" placeholder="เช่น 12">
+            </div>
+        </div>
+        
+        <button onclick="calculateLoan()">คำนวณเงินกู้</button>
+
+        <div id="result">
+            <table>
+                <thead>
+                    <tr>
+                        <th>งวดที่</th>
+                        <th>เงินกู้คงเหลือ</th>
+                        <th>เงินต้นต่อเดือน</th>
+                        <th>ดอกเบี้ย</th>
+                        <th>รวมยอดผ่อน</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+
+        <div class="note">
+            *หมายเหตุ: การคำนวณดอกเบี้ยใช้สูตร (เงินกู้คงเหลือ x อัตราดอกเบี้ย x 31 วัน) / 365 วัน
+        </div>
+    </div>
+
+    <script>
+        function calculateLoan() {
+            const loanAmount = parseFloat(document.getElementById('loanAmount').value);
+            const interestRate = parseFloat(document.getElementById('interestRate').value) / 100;
+            const installments = parseInt(document.getElementById('installments').value);
+
+            if (!loanAmount || !interestRate || !installments) return;
+
+            // เงินต้นที่ควรผ่อนในแต่ละงวด (แบบพื้นฐานปัดขึ้น)
+            const standardPrincipal = Math.ceil(loanAmount / installments);
+            let remainingBalance = loanAmount;
+            
+            const tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = '';
+
+            // ตัวแปรสะสมผลรวม
+            let sumPrincipal = 0;
+            let sumInterest = 0;
+            let sumTotalPayment = 0;
+
+            // วนลูปสร้างตารางรายงวด
+            for (let i = 1; i <= installments; i++) {
+                // (1) ตรวจสอบว่าเป็นงวดสุดท้ายหรือไม่
+                //     หากเป็นงวดสุดท้าย ให้ผ่อนเงินต้นเท่ากับ remainingBalance
+                let thisPrincipal = (i < installments)
+                    ? standardPrincipal
+                    : remainingBalance;  // งวดสุดท้าย ผ่อนเท่าที่เหลือ
+
+                // (2) คำนวณดอกเบี้ยจาก remainingBalance ปัจจุบัน
+                const interest = (remainingBalance * interestRate * 31) / 365;
+                const totalPayment = thisPrincipal + interest;
+                
+                // บันทึกค่าสะสมเพื่อนำไปสรุปตอนท้าย
+                sumPrincipal += thisPrincipal;
+                sumInterest += interest;
+                sumTotalPayment += totalPayment;
+                
+                // สร้างแถวข้อมูลรายงวด
+                const row = `
+                    <tr>
+                        <td>${i}</td>
+                        <td>${remainingBalance.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</td>
+                        <td>${thisPrincipal.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</td>
+                        <td>${interest.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</td>
+                        <td>${totalPayment.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+
+                // (3) ลด remainingBalance ลงตามเงินต้นที่ชำระ
+                remainingBalance -= thisPrincipal;
+                if (remainingBalance < 0) remainingBalance = 0;
+            }
+            
+            // สร้างบรรทัด “รวม” (รวมเฉพาะช่อง 3–5)
+            // ช่อง 2 (เงินกู้คงเหลือ) จะใส่ “–” ตามเงื่อนไข
+            const sumRow = `
+                <tr style="font-weight: bold;">
+                    <td>รวม</td>
+                    <td>–</td>
+                    <td>${sumPrincipal.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</td>
+                    <td>${sumInterest.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</td>
+                    <td>${sumTotalPayment.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</td>
+                </tr>
+            `;
+            tableBody.innerHTML += sumRow;
+        }
+    </script>
+</body>
+</html>
